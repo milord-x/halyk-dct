@@ -6,7 +6,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/models/order_model.dart';
 import '../../../shared/widgets/halyk_app_bar.dart';
 import '../../../shared/widgets/status_badge.dart';
-import '../../session/providers/session_provider.dart';
 import '../providers/orders_provider.dart';
 
 class OrderDetailScreen extends ConsumerWidget {
@@ -96,13 +95,10 @@ class _OrderDetail extends ConsumerWidget {
           ),
           child: ElevatedButton.icon(
             onPressed: canScan
-                ? () {
-                    ref.read(sessionProvider.notifier).startSession(order);
-                    context.push('/orders/${order.id}/scan');
-                  }
+                ? () => context.push('/orders/${order.id}/invoice-camera')
                 : null,
-            icon: const Icon(Icons.qr_code_scanner_rounded),
-            label: const Text('Начать приёмку'),
+            icon: const Icon(Icons.camera_alt_rounded),
+            label: const Text('Сфотографировать накладную'),
           ),
         ),
       ],

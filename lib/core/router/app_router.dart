@@ -5,9 +5,11 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/orders/screens/orders_screen.dart';
 import '../../features/orders/screens/order_detail_screen.dart';
-import '../../features/scanner/screens/scanner_screen.dart';
-import '../../features/scanner/screens/scan_result_screen.dart';
-import '../../features/session/screens/session_summary_screen.dart';
+import '../../features/invoice/screens/invoice_camera_screen.dart';
+import '../../features/invoice/screens/invoice_review_screen.dart';
+import '../../features/acceptance/screens/discrepancy_screen.dart';
+import '../../features/acceptance/screens/act_screen.dart';
+import '../../features/acceptance/screens/acceptance_done_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authProvider);
@@ -31,19 +33,29 @@ final routerProvider = Provider<GoRouter>((ref) {
             OrderDetailScreen(orderId: state.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/orders/:id/scan',
+        path: '/orders/:id/invoice-camera',
         builder: (context, state) =>
-            ScannerScreen(orderId: state.pathParameters['id']!),
+            InvoiceCameraScreen(orderId: state.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/orders/:id/scan-result',
+        path: '/orders/:id/invoice-review',
         builder: (context, state) =>
-            ScanResultScreen(orderId: state.pathParameters['id']!),
+            InvoiceReviewScreen(orderId: state.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/orders/:id/summary',
+        path: '/orders/:id/discrepancies',
         builder: (context, state) =>
-            SessionSummaryScreen(orderId: state.pathParameters['id']!),
+            DiscrepancyScreen(orderId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/orders/:id/act',
+        builder: (context, state) =>
+            ActScreen(orderId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/orders/:id/done',
+        builder: (context, state) =>
+            AcceptanceDoneScreen(orderId: state.pathParameters['id']!),
       ),
     ],
     errorBuilder: (_, state) => Scaffold(
