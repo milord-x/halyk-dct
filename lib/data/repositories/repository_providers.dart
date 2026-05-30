@@ -1,26 +1,33 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_constants.dart';
+import '../network/api_client.dart';
 import 'auth_repository.dart';
 import 'order_repository.dart';
 import 'session_repository.dart';
 import '../mock/mock_auth_repository.dart';
 import '../mock/mock_order_repository.dart';
 import '../mock/mock_session_repository.dart';
+import '../real/real_auth_repository.dart';
+import '../real/real_order_repository.dart';
+import '../real/real_session_repository.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   if (AppConstants.useMock) return MockAuthRepository();
-  // TODO: return RealAuthRepository(ref.read(dioProvider));
-  throw UnimplementedError('Real auth repository not implemented yet');
+  return RealAuthRepository(ref.read(dioProvider));
 });
 
 final orderRepositoryProvider = Provider<OrderRepository>((ref) {
   if (AppConstants.useMock) return MockOrderRepository();
-  // TODO: return RealOrderRepository(ref.read(dioProvider));
-  throw UnimplementedError('Real order repository not implemented yet');
+  return RealOrderRepository(ref.read(dioProvider));
 });
 
 final sessionRepositoryProvider = Provider<SessionRepository>((ref) {
   if (AppConstants.useMock) return MockSessionRepository();
-  // TODO: return RealSessionRepository(ref.read(dioProvider));
-  throw UnimplementedError('Real session repository not implemented yet');
+  return RealSessionRepository(ref.read(dioProvider));
+});
+
+// Провайдер для recognize-image (только реальный)
+final realSessionRepoProvider = Provider<RealSessionRepository?>((ref) {
+  if (AppConstants.useMock) return null;
+  return RealSessionRepository(ref.read(dioProvider));
 });

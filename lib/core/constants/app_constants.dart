@@ -1,10 +1,12 @@
 class AppConstants {
-  // Переключатель: true = mock-данные, false = реальный API
-  static const bool useMock = true;
+  static const bool useMock = false;
 
-  // Базовый URL реального API (меняется при подключении к БД)
-  static const String apiBaseUrl = 'http://192.168.1.100:8000/api/v1';
+  static const String apiBaseUrl = 'https://banner-author-declared.ngrok-free.dev/api/v1';
 
-  // Таймаут запросов
-  static const Duration requestTimeout = Duration(seconds: 15);
+  static const Duration requestTimeout = Duration(seconds: 30);
+
+  // ngrok требует этот заголовок чтобы пропустить страницу предупреждения
+  static const Map<String, String> ngrokHeaders = {
+    'ngrok-skip-browser-warning': 'true',
+  };
 }

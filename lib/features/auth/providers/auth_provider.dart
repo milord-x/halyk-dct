@@ -11,7 +11,13 @@ class AuthState {
 
   bool get isAuthenticated => user != null;
 
-  AuthState copyWith({AppUser? user, bool? isLoading, String? error, bool clearError = false, bool clearUser = false}) =>
+  AuthState copyWith({
+    AppUser? user,
+    bool? isLoading,
+    String? error,
+    bool clearError = false,
+    bool clearUser = false,
+  }) =>
       AuthState(
         user: clearUser ? null : (user ?? this.user),
         isLoading: isLoading ?? this.isLoading,
@@ -20,17 +26,32 @@ class AuthState {
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier(this._ref) : super(const AuthState());
+  AuthNotifier(this._ref) : super(const AuthState(isLoading: true)) {
+    _restoreSession();
+  }
 
   final Ref _ref;
+
+  Future<void> _restoreSession() async {
+    try {
+      final user = await _ref.read(authRepositoryProvider).getCurrentUser();
+      state = AuthState(user: user);
+    } catch (_) {
+      state = const AuthState();
+    }
+  }
 
   Future<void> login(String email, String password) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final user = await _ref.read(authRepositoryProvider).login(email, password);
+      final user =
+          await _ref.read(authRepositoryProvider).login(email, password);
       state = state.copyWith(user: user, isLoading: false);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString().replaceFirst('Exception: ', ''));
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
 
@@ -40,6 +61,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 }
 
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+final authProvider =
+    StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(ref);
 });

@@ -15,6 +15,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/login',
     redirect: (context, state) {
+      if (auth.isLoading) return null;
       final isLoggedIn = auth.isAuthenticated;
       final isLoginPage = state.uri.toString() == '/login';
       if (!isLoggedIn && !isLoginPage) return '/login';
@@ -26,22 +27,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/orders', builder: (context, _) => const OrdersScreen()),
       GoRoute(
         path: '/orders/:id',
-        builder: (context, state) => OrderDetailScreen(orderId: state.pathParameters['id']!),
+        builder: (context, state) =>
+            OrderDetailScreen(orderId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/orders/:id/scan',
-        builder: (context, state) => ScannerScreen(orderId: state.pathParameters['id']!),
+        builder: (context, state) =>
+            ScannerScreen(orderId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/orders/:id/scan-result',
-        builder: (context, state) => ScanResultScreen(orderId: state.pathParameters['id']!),
+        builder: (context, state) =>
+            ScanResultScreen(orderId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/orders/:id/summary',
-        builder: (context, state) => SessionSummaryScreen(orderId: state.pathParameters['id']!),
+        builder: (context, state) =>
+            SessionSummaryScreen(orderId: state.pathParameters['id']!),
       ),
     ],
-    errorBuilder: (context, state) => Scaffold(
+    errorBuilder: (_, state) => Scaffold(
       body: Center(child: Text('Страница не найдена: ${state.error}')),
     ),
   );
