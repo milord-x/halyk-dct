@@ -7,9 +7,6 @@ workflows:
     environment:
       groups:
         - appstore_credentials
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: kz.halyk.halykDct
       flutter: stable
       xcode: latest
       cocoapods: default
