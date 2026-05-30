@@ -9,7 +9,7 @@ workflows:
         BUNDLE_ID: kz.halyk.halykDct
         APP_STORE_CONNECT_KEY_IDENTIFIER: FD84VDDBBV
         APP_STORE_CONNECT_ISSUER_ID: 6686d604-22c4-44aa-9eed-439fc522a778
-        # APP_STORE_CONNECT_PRIVATE_KEY — добавлен как encrypted env var в Codemagic UI
+        # APP_STORE_CONNECT_PRIVATE_KEY хранится как encrypted переменная в Codemagic
       flutter: stable
       xcode: latest
       cocoapods: default
@@ -22,7 +22,13 @@ workflows:
         script: |
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
+            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
+            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" \
             --create
+
+      - name: Add certificates to keychain
+        script: keychain add-certificates
 
       - name: Use signing profiles
         script: xcode-project use-profiles
@@ -43,9 +49,6 @@ workflows:
           xcode-project build-ipa \
             --workspace "ios/Runner.xcworkspace" \
             --scheme "Runner"
-
-      - name: Clean up keychain
-        script: keychain add-certificates
 
     artifacts:
       - build/ios/ipa/*.ipa
