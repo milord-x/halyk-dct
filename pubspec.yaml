@@ -2,7 +2,7 @@ name: halyk_dct
 description: "Halyk DCT — терминал сбора данных для приёмки товаров"
 publish_to: 'none'
 
-version: 1.0.0+2
+version: 1.0.0+3
 
 environment:
   sdk: ^3.10.7
