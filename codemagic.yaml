@@ -5,20 +5,34 @@ workflows:
     instance_type: mac_mini_m2
 
     environment:
-      app_store_connect:
-        key_identifier: FD84VDDBBV
-        issuer_id: 6686d604-22c4-44aa-9eed-439fc522a778
-        private_key: $APP_STORE_CONNECT_PRIVATE_KEY
+      groups:
+        - appstore_credentials
       ios_signing:
         distribution_type: app_store
         bundle_identifier: kz.halyk.halykDct
-      vars:
-        BUNDLE_ID: kz.halyk.halykDct
       flutter: stable
       xcode: latest
       cocoapods: default
 
     scripts:
+      - name: Set up keychain
+        script: keychain initialize
+
+      - name: Fetch signing files
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
+            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" \
+            --create
+
+      - name: Add certificates to keychain
+        script: keychain add-certificates
+
+      - name: Use signing profiles
+        script: xcode-project use-profiles
+
       - name: Get Flutter packages
         script: flutter pub get
 
@@ -42,7 +56,9 @@ workflows:
 
     publishing:
       app_store_connect:
-        auth: integration
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
         submit_to_testflight: true
         submit_to_app_store: false
       email:
