@@ -20,11 +20,12 @@ workflows:
 
       - name: Fetch signing files
         script: |
+          echo "$APP_STORE_CONNECT_PRIVATE_KEY" > /tmp/asc_key.p8
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-            --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" \
+            --private-key @/tmp/asc_key.p8 \
             --create
 
       - name: Add certificates to keychain
@@ -59,6 +60,7 @@ workflows:
         api_key: $APP_STORE_CONNECT_PRIVATE_KEY
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        # key передаётся как PEM-строка — Codemagic publisher умеет это сам
         submit_to_testflight: true
         submit_to_app_store: false
       email:
