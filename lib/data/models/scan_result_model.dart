@@ -26,7 +26,9 @@ class ScanRecord {
   final double qtyOrdered;
   final double qtyActual;
   final double? qtyDiscrepancy;
-  final String? defectPhotoPath;
+  final String? scanPhotoPath;     // фото товара при сканировании
+  final String? defectPhotoPath;   // фото брака
+  final String? scanPhotoUrl;      // URL после загрузки на сервер
   final DateTime scannedAt;
 
   const ScanRecord({
@@ -37,7 +39,9 @@ class ScanRecord {
     required this.qtyOrdered,
     required this.qtyActual,
     this.qtyDiscrepancy,
+    this.scanPhotoPath,
     this.defectPhotoPath,
+    this.scanPhotoUrl,
     required this.scannedAt,
   });
 
@@ -49,6 +53,7 @@ class ScanRecord {
         'qty_ordered': qtyOrdered,
         'qty_actual': qtyActual,
         'qty_discrepancy': qtyDiscrepancy,
+        'scan_photo_url': scanPhotoUrl,
         'defect_photo_path': defectPhotoPath,
         'scanned_at': scannedAt.toIso8601String(),
       };

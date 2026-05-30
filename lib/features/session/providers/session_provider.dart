@@ -53,6 +53,7 @@ class SessionNotifier extends StateNotifier<SessionState> {
     required double qtyOrdered,
     required double qtyActual,
     double? qtyDiscrepancy,
+    String? scanPhotoPath,
     String? defectPhotoPath,
   }) {
     final record = ScanRecord(
@@ -63,6 +64,7 @@ class SessionNotifier extends StateNotifier<SessionState> {
       qtyOrdered: qtyOrdered,
       qtyActual: qtyActual,
       qtyDiscrepancy: qtyDiscrepancy,
+      scanPhotoPath: scanPhotoPath,
       defectPhotoPath: defectPhotoPath,
       scannedAt: DateTime.now(),
     );

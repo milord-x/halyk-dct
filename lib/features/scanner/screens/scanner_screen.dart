@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/halyk_app_bar.dart';
@@ -17,6 +18,7 @@ class ScannerScreen extends ConsumerStatefulWidget {
 class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   MobileScannerController? _controller;
   bool _torchOn = false;
+  bool _navigating = false;
 
   @override
   void initState() {
@@ -36,15 +38,40 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
 
   void _onDetect(BarcodeCapture capture) {
     final barcode = capture.barcodes.firstOrNull?.rawValue;
-    if (barcode == null) return;
+    if (barcode == null || _navigating) return;
     ref.read(scannerProvider.notifier).onBarcodeDetected(barcode);
+  }
+
+  Future<void> _takeProductPhoto() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.camera,
+      maxWidth: 1280,
+      imageQuality: 85,
+    );
+    if (picked != null) {
+      ref.read(scannerProvider.notifier).setScanPhoto(picked.path);
+    }
+  }
+
+  void _navigateToResult() {
+    _takeProductPhoto().then((_) {
+      if (!mounted) return;
+      context.push('/orders/${widget.orderId}/scan-result');
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _controller?.start();
+        _navigating = false;
+      });
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<ScannerState>(scannerProvider, (_, next) {
-      if (next.foundProduct != null && !next.isSearching) {
-        context.push('/orders/${widget.orderId}/scan-result');
+    ref.listen<ScannerState>(scannerProvider, (prev, next) {
+      if (next.foundProduct != null && !next.isSearching && !_navigating) {
+        _navigating = true;
+        _controller?.stop();
+        _navigateToResult();
       }
     });
 
@@ -57,7 +84,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
         actions: [
           IconButton(
             icon: Icon(
-              _torchOn ? Icons.flash_on : Icons.flash_off,
+              _torchOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
               color: Colors.white,
             ),
             onPressed: () {
@@ -73,7 +100,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
             controller: _controller!,
             onDetect: _onDetect,
           ),
-          // Оверлей с прицелом
+          // Тёмный оверлей с прицелом
           CustomPaint(
             painter: _ScanOverlayPainter(),
             child: const SizedBox.expand(),
@@ -85,8 +112,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
             right: 0,
             child: Center(
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(24),
@@ -98,9 +124,25 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
               ),
             ),
           ),
-          // Статус поиска / ошибка снизу
+          // Подсказка под прицелом
           Positioned(
-            bottom: 48,
+            top: MediaQuery.of(context).size.height * 0.55,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Text(
+                'После сканирования будет сделано\nфото товара',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+          // Статус / ошибка снизу
+          Positioned(
+            bottom: 100,
             left: 24,
             right: 24,
             child: AnimatedSwitcher(
@@ -132,15 +174,31 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
           ),
           // Кнопка сводки сессии
           Positioned(
-            bottom: 48,
-            right: 24,
-            child: FloatingActionButton.extended(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              onPressed: () =>
-                  context.push('/orders/${widget.orderId}/summary'),
-              icon: const Icon(Icons.checklist_rounded),
-              label: const Text('Сводка'),
+            bottom: 32,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: GestureDetector(
+                onTap: () => context.push('/orders/${widget.orderId}/summary'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: Colors.white30),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.checklist_rounded, color: Colors.white, size: 18),
+                      SizedBox(width: 8),
+                      Text('Сводка сессии',
+                          style: TextStyle(
+                              color: Colors.white, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -189,7 +247,8 @@ class _StatusChip extends StatelessWidget {
                     style: TextStyle(
                         color: Colors.white70,
                         fontSize: 12,
-                        decoration: TextDecoration.underline)),
+                        decoration: TextDecoration.underline,
+                        decorationColor: Colors.white70)),
               ],
             ],
           ),
@@ -206,19 +265,19 @@ class _ScanOverlayPainter extends CustomPainter {
     const frameW = 260.0;
     const frameH = 160.0;
     final cx = size.width / 2;
-    final cy = size.height / 2;
+    final cy = size.height * 0.42;
     final rect = Rect.fromCenter(
         center: Offset(cx, cy), width: frameW, height: frameH);
 
     canvas
-      ..drawRect(
-          Rect.fromLTWH(0, 0, size.width, rect.top), dark)
+      ..drawRect(Rect.fromLTWH(0, 0, size.width, rect.top), dark)
       ..drawRect(
           Rect.fromLTWH(0, rect.bottom, size.width, size.height - rect.bottom),
           dark)
       ..drawRect(Rect.fromLTWH(0, rect.top, rect.left, frameH), dark)
       ..drawRect(
-          Rect.fromLTWH(rect.right, rect.top, size.width - rect.right, frameH),
+          Rect.fromLTWH(
+              rect.right, rect.top, size.width - rect.right, frameH),
           dark);
 
     final corner = Paint()
@@ -228,23 +287,19 @@ class _ScanOverlayPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     const r = 12.0;
     const len = 28.0;
-    // top-left
     canvas
       ..drawLine(rect.topLeft + const Offset(r, 0),
           rect.topLeft + const Offset(len, 0), corner)
       ..drawLine(rect.topLeft + const Offset(0, r),
           rect.topLeft + const Offset(0, len), corner)
-      // top-right
       ..drawLine(rect.topRight - const Offset(len, 0),
           rect.topRight - const Offset(r, 0), corner)
       ..drawLine(rect.topRight + const Offset(0, r),
           rect.topRight + const Offset(0, len), corner)
-      // bottom-left
       ..drawLine(rect.bottomLeft + const Offset(r, 0),
           rect.bottomLeft + const Offset(len, 0), corner)
       ..drawLine(rect.bottomLeft - const Offset(0, len),
           rect.bottomLeft - const Offset(0, r), corner)
-      // bottom-right
       ..drawLine(rect.bottomRight - const Offset(len, 0),
           rect.bottomRight - const Offset(r, 0), corner)
       ..drawLine(rect.bottomRight - const Offset(0, len),

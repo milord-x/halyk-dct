@@ -8,12 +8,16 @@ class ScannerState {
   final Product? foundProduct;
   final String? error;
   final String? lastBarcode;
+  final String? scanPhotoPath;    // фото товара сделанное при сканировании
+  final bool isUploadingPhoto;
 
   const ScannerState({
     this.isSearching = false,
     this.foundProduct,
     this.error,
     this.lastBarcode,
+    this.scanPhotoPath,
+    this.isUploadingPhoto = false,
   });
 
   ScannerState copyWith({
@@ -21,14 +25,19 @@ class ScannerState {
     Product? foundProduct,
     String? error,
     String? lastBarcode,
+    String? scanPhotoPath,
+    bool? isUploadingPhoto,
     bool clearProduct = false,
     bool clearError = false,
+    bool clearPhoto = false,
   }) =>
       ScannerState(
         isSearching: isSearching ?? this.isSearching,
         foundProduct: clearProduct ? null : (foundProduct ?? this.foundProduct),
         error: clearError ? null : (error ?? this.error),
         lastBarcode: lastBarcode ?? this.lastBarcode,
+        scanPhotoPath: clearPhoto ? null : (scanPhotoPath ?? this.scanPhotoPath),
+        isUploadingPhoto: isUploadingPhoto ?? this.isUploadingPhoto,
       );
 }
 
@@ -39,7 +48,8 @@ class ScannerNotifier extends StateNotifier<ScannerState> {
 
   Future<void> onBarcodeDetected(String barcode) async {
     if (state.isSearching || state.lastBarcode == barcode) return;
-    state = state.copyWith(isSearching: true, clearProduct: true, clearError: true, lastBarcode: barcode);
+    state = state.copyWith(
+        isSearching: true, clearProduct: true, clearError: true, lastBarcode: barcode);
 
     final user = _ref.read(authProvider).user;
     if (user == null) {
@@ -53,7 +63,8 @@ class ScannerNotifier extends StateNotifier<ScannerState> {
           .getProductByBarcode(barcode, user.organizationId);
 
       if (product == null) {
-        state = state.copyWith(isSearching: false, error: 'Товар не найден: $barcode');
+        state = state.copyWith(
+            isSearching: false, error: 'Товар не найден: $barcode');
       } else {
         state = state.copyWith(isSearching: false, foundProduct: product);
       }
@@ -65,11 +76,16 @@ class ScannerNotifier extends StateNotifier<ScannerState> {
     }
   }
 
+  void setScanPhoto(String path) {
+    state = state.copyWith(scanPhotoPath: path);
+  }
+
   void reset() {
     state = const ScannerState();
   }
 }
 
-final scannerProvider = StateNotifierProvider<ScannerNotifier, ScannerState>((ref) {
+final scannerProvider =
+    StateNotifierProvider<ScannerNotifier, ScannerState>((ref) {
   return ScannerNotifier(ref);
 });

@@ -23,7 +23,6 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
   final _qtyCtrl = TextEditingController();
   final _defectQtyCtrl = TextEditingController();
   String? _defectPhotoPath;
-  final bool _isSaving = false;
 
   @override
   void dispose() {
@@ -39,14 +38,14 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
       maxWidth: 1280,
       imageQuality: 85,
     );
-    if (picked != null) {
-      setState(() => _defectPhotoPath = picked.path);
-    }
+    if (picked != null) setState(() => _defectPhotoPath = picked.path);
   }
 
   void _submit() {
-    final product = ref.read(scannerProvider).foundProduct!;
+    final scanState = ref.read(scannerProvider);
+    final product = scanState.foundProduct!;
     final session = ref.read(sessionProvider);
+
     final orderItem = session.activeOrder?.items.firstWhere(
       (i) => i.product?.id == product.id,
       orElse: () => OrderItem(
@@ -82,6 +81,7 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
           qtyOrdered: qtyOrdered,
           qtyActual: qtyActual,
           qtyDiscrepancy: qtyDiscrepancy,
+          scanPhotoPath: scanState.scanPhotoPath,
           defectPhotoPath: _defectPhotoPath,
         );
 
@@ -91,7 +91,9 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final product = ref.watch(scannerProvider).foundProduct;
+    final scanState = ref.watch(scannerProvider);
+    final product = scanState.foundProduct;
+
     if (product == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => context.pop());
       return const SizedBox.shrink();
@@ -108,22 +110,55 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
         qtyOrdered: 0,
       ),
     );
+    final qtyOrdered = orderItem?.qtyOrdered ?? 0;
 
     return Scaffold(
-      appBar: const HalykAppBar(title: 'Результат сканирования'),
+      appBar: const HalykAppBar(title: 'Информация о товаре'),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // Фото товара
+          if (scanState.scanPhotoPath != null)
+            _ScanPhotoCard(photoPath: scanState.scanPhotoPath!),
+
+          // Карточка товара
           _ProductInfoCard(
             name: product.name,
             sku: product.sku,
             barcode: product.barcode,
-            qtyOrdered: orderItem?.qtyOrdered ?? 0,
+            qtyOrdered: qtyOrdered,
             unit: product.unit,
           ),
           const SizedBox(height: 20),
+
+          // Номер заявки
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.receipt_long_rounded,
+                    color: AppColors.primary, size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  'Заявка: ${session.activeOrder?.id.substring(0, 8).toUpperCase() ?? "—"}',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Выбор статуса
           const Text(
-            'Выберите статус товара',
+            'Статус товара',
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 15,
@@ -141,13 +176,16 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
             }),
           ),
           const SizedBox(height: 20),
+
+          // Доп. поля в зависимости от статуса
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 250),
-            child: _buildExtraFields(context, orderItem?.qtyOrdered ?? 0, product.unit),
+            duration: const Duration(milliseconds: 200),
+            child: _buildExtraFields(qtyOrdered, product.unit),
           ),
           const SizedBox(height: 32),
+
           ElevatedButton.icon(
-            onPressed: _isSaving ? null : _submit,
+            onPressed: _submit,
             icon: const Icon(Icons.check_rounded),
             label: const Text('Подтвердить'),
           ),
@@ -159,23 +197,27 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
             },
             child: const Text('Отмена'),
           ),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
 
-  Widget _buildExtraFields(BuildContext context, double qtyOrdered, String unit) {
+  Widget _buildExtraFields(double qtyOrdered, String unit) {
     switch (_selectedStatus) {
       case ScanStatus.ok:
-        return const SizedBox.shrink(key: ValueKey('ok'));
+        return _OkBanner(key: const ValueKey('ok'), qtyOrdered: qtyOrdered, unit: unit);
 
       case ScanStatus.defect:
         return Column(
           key: const ValueKey('defect'),
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Количество брака',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            _SectionLabel(
+              icon: Icons.broken_image_rounded,
+              label: 'Количество брака',
+              color: AppColors.statusDefect,
+            ),
             const SizedBox(height: 8),
             TextField(
               controller: _defectQtyCtrl,
@@ -183,16 +225,22 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
               decoration: InputDecoration(
                 hintText: 'Кол-во бракованных единиц',
                 suffixText: unit,
+                helperText: 'Заказано: $qtyOrdered $unit',
               ),
             ),
             const SizedBox(height: 16),
-            const Text('Фото брака',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            _SectionLabel(
+              icon: Icons.camera_alt_rounded,
+              label: 'Фото брака',
+              color: AppColors.statusDefect,
+            ),
             const SizedBox(height: 8),
             _PhotoPicker(
               photoPath: _defectPhotoPath,
               onPick: _pickDefectPhoto,
               onRemove: () => setState(() => _defectPhotoPath = null),
+              color: AppColors.statusDefect,
+              hint: 'Сфотографировать бракованный товар',
             ),
           ],
         );
@@ -202,14 +250,17 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
           key: const ValueKey('shortage'),
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Сколько не хватает',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            _SectionLabel(
+              icon: Icons.remove_circle_rounded,
+              label: 'Количество недостачи',
+              color: AppColors.statusShortage,
+            ),
             const SizedBox(height: 8),
             TextField(
               controller: _qtyCtrl,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                hintText: 'Количество недостающих единиц',
+                hintText: 'Сколько единиц не хватает',
                 suffixText: unit,
                 helperText: 'Заказано: $qtyOrdered $unit',
               ),
@@ -222,14 +273,17 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
           key: const ValueKey('surplus'),
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Сколько лишнего',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            _SectionLabel(
+              icon: Icons.add_circle_rounded,
+              label: 'Количество излишка',
+              color: AppColors.statusSurplus,
+            ),
             const SizedBox(height: 8),
             TextField(
               controller: _qtyCtrl,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                hintText: 'Количество лишних единиц',
+                hintText: 'Сколько лишних единиц',
                 suffixText: unit,
                 helperText: 'Заказано: $qtyOrdered $unit',
               ),
@@ -237,6 +291,119 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
           ],
         );
     }
+  }
+}
+
+class _ScanPhotoCard extends StatelessWidget {
+  final String photoPath;
+  const _ScanPhotoCard({required this.photoPath});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.camera_alt_rounded,
+                  size: 14, color: AppColors.textSecondary),
+              const SizedBox(width: 6),
+              const Text('Фото товара',
+                  style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text('Отправлено на сервер',
+                    style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Image.file(
+              File(photoPath),
+              height: 180,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OkBanner extends StatelessWidget {
+  final double qtyOrdered;
+  final String unit;
+  const _OkBanner({super.key, required this.qtyOrdered, required this.unit});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.statusOk.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.statusOk.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle_rounded,
+              color: AppColors.statusOk, size: 32),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Товар принят в норме',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.statusOk,
+                        fontSize: 14)),
+                Text('Принято: $qtyOrdered $unit',
+                    style: const TextStyle(
+                        color: AppColors.statusOk, fontSize: 12)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  const _SectionLabel(
+      {required this.icon, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 6),
+        Text(label,
+            style: TextStyle(
+                fontWeight: FontWeight.w600, fontSize: 14, color: color)),
+      ],
+    );
   }
 }
 
@@ -260,63 +427,77 @@ class _ProductInfoCard extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.inventory_2_outlined,
-                  color: AppColors.primary, size: 28),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          color: AppColors.textPrimary)),
-                  if (sku != null) ...[
-                    const SizedBox(height: 2),
-                    Text('Арт: $sku',
-                        style: const TextStyle(
-                            color: AppColors.textSecondary, fontSize: 12)),
-                  ],
-                  if (barcode != null) ...[
-                    const SizedBox(height: 2),
-                    Text('ШК: $barcode',
-                        style: const TextStyle(
-                            color: AppColors.textSecondary, fontSize: 12)),
-                  ],
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryLight,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'Заказано: $qtyOrdered $unit',
-                      style: const TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600),
-                    ),
+            Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                ],
-              ),
+                  child: const Icon(Icons.inventory_2_rounded,
+                      color: AppColors.primary, size: 28),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: AppColors.textPrimary)),
+                      if (sku != null) ...[
+                        const SizedBox(height: 3),
+                        _Tag(label: 'Арт: $sku'),
+                      ],
+                      if (barcode != null) ...[
+                        const SizedBox(height: 3),
+                        _Tag(label: 'ШК: $barcode'),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Text('Заказано:',
+                    style: TextStyle(
+                        color: AppColors.textSecondary, fontSize: 13)),
+                const Spacer(),
+                Text(
+                  '$qtyOrdered $unit',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                      color: AppColors.textPrimary),
+                ),
+              ],
             ),
           ],
         ),
       ),
     );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  final String label;
+  const _Tag({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(label,
+        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12));
   }
 }
 
@@ -329,15 +510,15 @@ class _StatusSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statuses = [
-      (ScanStatus.ok, Icons.check_circle_rounded, AppColors.statusOk),
-      (ScanStatus.defect, Icons.broken_image_rounded, AppColors.statusDefect),
-      (ScanStatus.shortage, Icons.remove_circle_rounded, AppColors.statusShortage),
-      (ScanStatus.surplus, Icons.add_circle_rounded, AppColors.statusSurplus),
+      (ScanStatus.ok, Icons.check_circle_rounded, AppColors.statusOk, 'Норма'),
+      (ScanStatus.defect, Icons.broken_image_rounded, AppColors.statusDefect, 'Брак'),
+      (ScanStatus.shortage, Icons.remove_circle_rounded, AppColors.statusShortage, 'Недостача'),
+      (ScanStatus.surplus, Icons.add_circle_rounded, AppColors.statusSurplus, 'Излишек'),
     ];
 
     return Row(
       children: statuses.map((entry) {
-        final (status, icon, color) = entry;
+        final (status, icon, color, label) = entry;
         final isSelected = selected == status;
         return Expanded(
           child: GestureDetector(
@@ -353,6 +534,15 @@ class _StatusSelector extends StatelessWidget {
                   color: isSelected ? color : AppColors.divider,
                   width: isSelected ? 2 : 1,
                 ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: color.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        )
+                      ]
+                    : null,
               ),
               child: Column(
                 children: [
@@ -360,7 +550,7 @@ class _StatusSelector extends StatelessWidget {
                       color: isSelected ? Colors.white : color, size: 24),
                   const SizedBox(height: 4),
                   Text(
-                    status.label,
+                    label,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 11,
@@ -382,11 +572,15 @@ class _PhotoPicker extends StatelessWidget {
   final String? photoPath;
   final VoidCallback onPick;
   final VoidCallback onRemove;
+  final Color color;
+  final String hint;
 
   const _PhotoPicker({
     required this.photoPath,
     required this.onPick,
     required this.onRemove,
+    required this.color,
+    required this.hint,
   });
 
   @override
@@ -409,12 +603,12 @@ class _PhotoPicker extends StatelessWidget {
             child: GestureDetector(
               onTap: onRemove,
               child: Container(
-                padding: const EdgeInsets.all(4),
+                padding: const EdgeInsets.all(6),
                 decoration: const BoxDecoration(
                   color: Colors.black54,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.close, color: Colors.white, size: 18),
+                child: const Icon(Icons.close, color: Colors.white, size: 16),
               ),
             ),
           ),
@@ -427,22 +621,20 @@ class _PhotoPicker extends StatelessWidget {
       child: Container(
         height: 120,
         decoration: BoxDecoration(
-          color: AppColors.statusDefect.withValues(alpha: 0.06),
+          color: color.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-              color: AppColors.statusDefect.withValues(alpha: 0.3),
-              style: BorderStyle.solid),
+              color: color.withValues(alpha: 0.3), style: BorderStyle.solid),
         ),
-        child: const Center(
+        child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.camera_alt_outlined,
-                  color: AppColors.statusDefect, size: 32),
-              SizedBox(height: 8),
-              Text('Сделать фото брака',
+              Icon(Icons.camera_alt_rounded, color: color, size: 32),
+              const SizedBox(height: 8),
+              Text(hint,
                   style: TextStyle(
-                      color: AppColors.statusDefect, fontWeight: FontWeight.w600)),
+                      color: color, fontWeight: FontWeight.w600, fontSize: 13)),
             ],
           ),
         ),
