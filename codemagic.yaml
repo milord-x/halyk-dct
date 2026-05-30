@@ -1,0 +1,66 @@
+workflows:
+  ios-release:
+    name: iOS Release — TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      vars:
+        BUNDLE_ID: kz.halyk.halykDct
+        APP_STORE_CONNECT_KEY_IDENTIFIER: FD84VDDBBV
+        APP_STORE_CONNECT_ISSUER_ID: 6686d604-22c4-44aa-9eed-439fc522a778
+        # APP_STORE_CONNECT_PRIVATE_KEY — добавлен как encrypted env var в Codemagic UI
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+
+    scripts:
+      - name: Set up keychain
+        script: keychain initialize
+
+      - name: Fetch signing files
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+
+      - name: Use signing profiles
+        script: xcode-project use-profiles
+
+      - name: Get Flutter packages
+        script: flutter pub get
+
+      - name: Install CocoaPods
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+
+      - name: Flutter analyze
+        script: flutter analyze
+
+      - name: Build IPA
+        script: |
+          flutter build ios --release --no-codesign
+          xcode-project build-ipa \
+            --workspace "ios/Runner.xcworkspace" \
+            --scheme "Runner"
+
+      - name: Clean up keychain
+        script: keychain add-certificates
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
+        submit_to_app_store: false
+      email:
+        recipients:
+          - arslanabdiqul08@gmail.com
+        notify:
+          success: true
+          failure: true
