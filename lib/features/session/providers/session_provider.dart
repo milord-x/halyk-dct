@@ -82,8 +82,38 @@ class SessionNotifier extends StateNotifier<SessionState> {
     state = state.copyWith(isSaving: true, clearError: true);
     try {
       final repo = _ref.read(sessionRepositoryProvider);
-      await repo.saveSession(state.activeOrder!.id, state.records);
-      state = state.copyWith(isSaving: false, isSaved: true);
+
+      // Загружаем фото перед сохранением
+      final updatedRecords = await Future.wait(
+        state.records.map((r) async {
+          String? scanUrl;
+          String? defectUrl;
+
+          if (r.scanPhotoPath != null) {
+            scanUrl = await repo.uploadPhoto(r.scanPhotoPath!, r.id, 'scan');
+          }
+          if (r.defectPhotoPath != null) {
+            defectUrl = await repo.uploadPhoto(r.defectPhotoPath!, r.id, 'defect');
+          }
+
+          return ScanRecord(
+            id: r.id,
+            orderId: r.orderId,
+            product: r.product,
+            status: r.status,
+            qtyOrdered: r.qtyOrdered,
+            qtyActual: r.qtyActual,
+            qtyDiscrepancy: r.qtyDiscrepancy,
+            scanPhotoPath: r.scanPhotoPath,
+            defectPhotoPath: defectUrl ?? r.defectPhotoPath,
+            scanPhotoUrl: scanUrl,
+            scannedAt: r.scannedAt,
+          );
+        }),
+      );
+
+      await repo.saveSession(state.activeOrder!.id, updatedRecords);
+      state = state.copyWith(isSaving: false, isSaved: true, records: updatedRecords);
     } catch (e) {
       state = state.copyWith(
         isSaving: false,
@@ -97,6 +127,7 @@ class SessionNotifier extends StateNotifier<SessionState> {
   }
 }
 
-final sessionProvider = StateNotifierProvider<SessionNotifier, SessionState>((ref) {
+final sessionProvider =
+    StateNotifierProvider<SessionNotifier, SessionState>((ref) {
   return SessionNotifier(ref);
 });

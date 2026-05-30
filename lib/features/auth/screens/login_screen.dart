@@ -45,83 +45,93 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // Верхняя зона — лого
             Expanded(
-              flex: 2,
+              flex: 5,
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Иконка приложения
                     Container(
-                      width: 80,
-                      height: 80,
+                      width: 96,
+                      height: 96,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 20,
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 24,
                             offset: const Offset(0, 8),
                           ),
                         ],
                       ),
-                      child: Center(
-                        child: Text(
-                          'H',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 44,
-                            fontWeight: FontWeight.w900,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Image.asset(
+                          'assets/icons/app_icon.png',
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, err, stack) => Center(
+                            child: Text(
+                              'H',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 52,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
                     const Text(
                       'Halyk DCT',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w800,
                         letterSpacing: 0.5,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
                       'Терминал сбора данных',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
+                        color: Colors.white.withValues(alpha: 0.75),
                         fontSize: 14,
+                        letterSpacing: 0.3,
                       ),
                     ),
                   ],
                 ),
               ),
             ),
+            // Нижняя зона — форма
             Expanded(
-              flex: 3,
+              flex: 7,
               child: Container(
                 decoration: const BoxDecoration(
                   color: AppColors.background,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
                 ),
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 8),
                       const Text(
                         'Вход в систему',
                         style: TextStyle(
                           fontSize: 22,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
+                      const Text(
                         'Введите данные вашего магазина',
                         style: TextStyle(
                           fontSize: 13,
@@ -135,12 +145,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
                           labelText: 'Email',
-                          prefixIcon: Icon(Icons.email_outlined),
+                          prefixIcon: Icon(Icons.alternate_email_rounded),
                         ),
                         validator: (v) =>
                             (v == null || v.isEmpty) ? 'Введите email' : null,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
                       TextFormField(
                         controller: _passwordCtrl,
                         obscureText: _obscure,
@@ -148,33 +158,40 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         onFieldSubmitted: (_) => _submit(),
                         decoration: InputDecoration(
                           labelText: 'Пароль',
-                          prefixIcon: const Icon(Icons.lock_outline),
+                          prefixIcon: const Icon(Icons.lock_outline_rounded),
                           suffixIcon: IconButton(
                             icon: Icon(_obscure
                                 ? Icons.visibility_outlined
                                 : Icons.visibility_off_outlined),
-                            onPressed: () => setState(() => _obscure = !_obscure),
+                            onPressed: () =>
+                                setState(() => _obscure = !_obscure),
                           ),
                         ),
                         validator: (v) =>
                             (v == null || v.isEmpty) ? 'Введите пароль' : null,
                       ),
                       if (state.error != null) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 14),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
                           decoration: BoxDecoration(
                             color: AppColors.error.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color:
+                                    AppColors.error.withValues(alpha: 0.2)),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.error_outline, color: AppColors.error, size: 18),
-                              const SizedBox(width: 8),
+                              const Icon(Icons.error_outline_rounded,
+                                  color: AppColors.error, size: 18),
+                              const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
                                   state.error!,
-                                  style: const TextStyle(color: AppColors.error, fontSize: 13),
+                                  style: const TextStyle(
+                                      color: AppColors.error, fontSize: 13),
                                 ),
                               ),
                             ],
@@ -186,10 +203,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         onPressed: state.isLoading ? null : _submit,
                         child: state.isLoading
                             ? const SizedBox(
-                                height: 20,
-                                width: 20,
+                                height: 22,
+                                width: 22,
                                 child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                                  strokeWidth: 2.5,
                                   color: Colors.white,
                                 ),
                               )
@@ -201,7 +218,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           '© 2025 Halyk Bank Kazakhstan',
                           style: TextStyle(
                             fontSize: 11,
-                            color: AppColors.textSecondary,
+                            color: AppColors.textSecondary.withValues(alpha: 0.7),
                           ),
                         ),
                       ),
